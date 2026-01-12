@@ -27,13 +27,14 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const glareRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
   const author = animation.author;
   
   // Generate unique ID for this card instance
   const uniqueId = useId().replace(/:/g, '-');
 
   // Execute inline scripts for canvas-based animations (Westworld category)
-  // with visibility-based pausing
+  // Ensures a constant, reliable loop by providing a scoped RAF and stop check
   useEffect(() => {
     if (animation.category === 'Westworld' && previewRef.current) {
       const canvas = previewRef.current.querySelector('canvas') as HTMLCanvasElement;
@@ -45,112 +46,84 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
       const scriptMatch = animation.html.match(/<script>([\s\S]*?)<\/script>/);
       if (!scriptMatch || !scriptMatch[1]) return;
       
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      // Parse and modify the script to be more robust
-      let scriptContent = scriptMatch[1]
-        // Replace any variant of finding the canvas with direct ID access
-        .replace(/document\.currentScript[\s\S]*?querySelector\(['"]canvas['"]\)/g, `document.getElementById('${canvasId}')`)
-        // Ensure requestAnimationFrame check visibility
-        .replace(
-          /requestAnimationFrame\(animate\)/g,
-          `if(window['__anim_visible_${canvasId}']) { window['__anim_raf_${canvasId}'] = requestAnimationFrame(animate); }`
-        );
-      
-      // Set up visibility and animation state tracking
-      (window as any)[`__anim_visible_${canvasId}`] = true;
-      (window as any)[`__anim_raf_${canvasId}`] = null;
-      
-      // Try to expose the animate function by injecting a wrapper
-      const wrappedScript = `
+      // Inject a local requestAnimationFrame that handles the stop flag and delta protection
+      const scriptContent = `
         (function() {
-          const originalRAF = window.requestAnimationFrame;
-          let capturedAnimate = null;
+          const canvasId = "${canvasId}";
+          let lastTime = 0;
           
-          window.requestAnimationFrame = function(cb) {
-            if (!capturedAnimate) capturedAnimate = cb;
-            return originalRAF(cb);
+          // Local override for requestAnimationFrame
+          const requestAnimationFrame = (callback) => {
+            return window.requestAnimationFrame((ts) => {
+              if (window['__stop_' + canvasId]) return;
+              
+              // Delta protection: if the tab was suspended, don't let ts - lastTime be huge
+              if (lastTime > 0 && ts - lastTime > 200) {
+                // Adjust ts to be just 16ms ahead of lastTime to keep it smooth
+                callback(lastTime + 16);
+                lastTime = lastTime + 16;
+              } else {
+                callback(ts);
+                lastTime = ts;
+              }
+            });
           };
           
-          ${scriptContent}
-          
-          window.requestAnimationFrame = originalRAF;
-          if (capturedAnimate) {
-            window['__anim_fn_${canvasId}'] = capturedAnimate;
-          }
+          // Execute the original script, replacing document.currentScript calls
+          ${scriptMatch[1].replace(/document\.currentScript[\s\S]*?querySelector\(['"]canvas['"]\)/g, "document.getElementById(canvasId)")}
         })();
       `;
       
       try {
-        const fn = new Function(wrappedScript);
+        window[`__stop_${canvasId}`] = false;
+        const fn = new Function(scriptContent);
         fn();
       } catch (e) {
-        console.error('Error executing animation script:', e);
+        console.error('Error executing Westworld animation:', e);
       }
       
-      // Set up IntersectionObserver to pause off-screen animations
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            const isVisible = entry.isIntersecting;
-            (window as any)[`__anim_visible_${canvasId}`] = isVisible;
-            
-            if (isVisible) {
-              const rafId = (window as any)[`__anim_raf_${canvasId}`];
-              const animateFn = (window as any)[`__anim_fn_${canvasId}`];
-              if (!rafId && animateFn) {
-                requestAnimationFrame(animateFn);
-              }
-            } else {
-              (window as any)[`__anim_raf_${canvasId}`] = null;
-            }
-          });
-        },
-        { threshold: 0, rootMargin: '100px' }
-      );
-      
-      observer.observe(canvas);
-      
       return () => {
-        observer.disconnect();
-        (window as any)[`__anim_visible_${canvasId}`] = false;
-        const rafId = (window as any)[`__anim_raf_${canvasId}`];
-        if (rafId) cancelAnimationFrame(rafId);
-        delete (window as any)[`__anim_visible_${canvasId}`];
-        delete (window as any)[`__anim_raf_${canvasId}`];
-        delete (window as any)[`__anim_fn_${canvasId}`];
+        window[`__stop_${canvasId}`] = true;
       };
     }
-  }, [animation, uniqueId]);
+  }, [animation.id, uniqueId]);
 
-  // Use CSS variables for tilt to avoid React re-renders
+  // Use requestAnimationFrame for tilt to avoid lag and React re-renders
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!innerRef.current || !glareRef.current) return;
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     const rect = innerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    rafRef.current = requestAnimationFrame(() => {
+      if (!innerRef.current || !glareRef.current) return;
+      
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
 
-    const rotateX = ((y - centerY) / centerY) * -15;
-    const rotateY = ((x - centerX) / centerX) * 15;
+      // Lessened tilt angle (from 15 to 8)
+      const rotateX = ((y - centerY) / centerY) * -8;
+      const rotateY = ((x - centerX) / centerX) * 8;
 
-    innerRef.current.style.setProperty('--rotateX', `${rotateX}deg`);
-    innerRef.current.style.setProperty('--rotateY', `${rotateY}deg`);
-    innerRef.current.style.setProperty('--scale', '1.02');
-    
-    const glareX = (x / rect.width) * 100;
-    const glareY = (y / rect.height) * 100;
-    glareRef.current.style.setProperty('--glareX', `${glareX}%`);
-    glareRef.current.style.setProperty('--glareY', `${glareY}%`);
-    glareRef.current.style.setProperty('--glareOpacity', '0.4');
+      innerRef.current.style.setProperty('--rotateX', `${rotateX}deg`);
+      innerRef.current.style.setProperty('--rotateY', `${rotateY}deg`);
+      innerRef.current.style.setProperty('--scale', '1.02');
+      
+      const glareX = (x / rect.width) * 100;
+      const glareY = (y / rect.height) * 100;
+      glareRef.current.style.setProperty('--glareX', `${glareX}%`);
+      glareRef.current.style.setProperty('--glareY', `${glareY}%`);
+      glareRef.current.style.setProperty('--glareOpacity', '0.4');
+    });
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (!innerRef.current || !glareRef.current) return;
+    
     innerRef.current.style.setProperty('--rotateX', '0deg');
     innerRef.current.style.setProperty('--rotateY', '0deg');
     innerRef.current.style.setProperty('--scale', '1');
@@ -185,7 +158,7 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
       >
         <div 
           ref={innerRef}
-          className="relative bg-[#0a0a0a] border border-zinc-900 overflow-hidden flex flex-col h-full hover:border-emerald-500/50 transition-[border-color,transform] duration-300 will-change-transform"
+          className="relative bg-[#0a0a0a] border border-zinc-900 overflow-hidden flex flex-col h-full hover:border-emerald-500/50 transition-[border-color,transform] duration-200 will-change-transform"
           style={{ 
             transform: 'perspective(1000px) rotateX(var(--rotateX, 0deg)) rotateY(var(--rotateY, 0deg)) scale3d(var(--scale, 1), var(--scale, 1), var(--scale, 1))' 
           }}
@@ -193,7 +166,7 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
           {/* Dynamic Glare Overlay */}
           <div 
             ref={glareRef}
-            className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-300"
+            className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-200"
             style={{ 
               opacity: 'var(--glareOpacity, 0)',
               background: 'radial-gradient(circle at var(--glareX, 50%) var(--glareY, 50%), rgba(16, 185, 129, 0.3) 0%, transparent 70%)',
