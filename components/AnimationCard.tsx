@@ -24,11 +24,9 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
   const [copied, setCopied] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const glareRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const isVisibleRef = useRef(true);
-  const [style, setStyle] = useState<React.CSSProperties>({});
-  const [glareStyle, setGlareStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const author = animation.author;
   
   // Generate unique ID for this card instance
@@ -65,13 +63,11 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
       (window as any)[`__anim_raf_${canvasId}`] = null;
       
       // Try to expose the animate function by injecting a wrapper
-      // We wrap the script to capture the 'animate' function if it's defined
       const wrappedScript = `
         (function() {
           const originalRAF = window.requestAnimationFrame;
           let capturedAnimate = null;
           
-          // Temporary override to capture the animate function
           window.requestAnimationFrame = function(cb) {
             if (!capturedAnimate) capturedAnimate = cb;
             return originalRAF(cb);
@@ -79,7 +75,6 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
           
           ${scriptContent}
           
-          // Restore RAF and store the captured function
           window.requestAnimationFrame = originalRAF;
           if (capturedAnimate) {
             window['__anim_fn_${canvasId}'] = capturedAnimate;
@@ -102,14 +97,12 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
             (window as any)[`__anim_visible_${canvasId}`] = isVisible;
             
             if (isVisible) {
-              // Restart animation if it was paused
               const rafId = (window as any)[`__anim_raf_${canvasId}`];
               const animateFn = (window as any)[`__anim_fn_${canvasId}`];
               if (!rafId && animateFn) {
                 requestAnimationFrame(animateFn);
               }
             } else {
-              // Mark as not running so it can be restarted
               (window as any)[`__anim_raf_${canvasId}`] = null;
             }
           });
@@ -131,41 +124,37 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
     }
   }, [animation, uniqueId]);
 
-  // Throttled mouse move handler - only update every 32ms (~30fps)
-  const handleMouseMove = useCallback(
-    throttle((e: React.MouseEvent<HTMLDivElement>) => {
-      if (!cardRef.current) return;
+  // Use CSS variables for tilt to avoid React re-renders
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!innerRef.current || !glareRef.current) return;
 
-      const rect = cardRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+    const rect = innerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
 
-      const rotateX = ((y - centerY) / centerY) * -15;
-      const rotateY = ((x - centerX) / centerX) * 15;
+    const rotateX = ((y - centerY) / centerY) * -15;
+    const rotateY = ((x - centerX) / centerX) * 15;
 
-      setStyle({
-        transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
-      });
-
-      const glareX = (x / rect.width) * 100;
-      const glareY = (y / rect.height) * 100;
-      setGlareStyle({
-        opacity: 0.4,
-        background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(16, 185, 129, 0.3) 0%, transparent 70%)`,
-      });
-    }, 32),
-    []
-  );
+    innerRef.current.style.setProperty('--rotateX', `${rotateX}deg`);
+    innerRef.current.style.setProperty('--rotateY', `${rotateY}deg`);
+    innerRef.current.style.setProperty('--scale', '1.02');
+    
+    const glareX = (x / rect.width) * 100;
+    const glareY = (y / rect.height) * 100;
+    glareRef.current.style.setProperty('--glareX', `${glareX}%`);
+    glareRef.current.style.setProperty('--glareY', `${glareY}%`);
+    glareRef.current.style.setProperty('--glareOpacity', '0.4');
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
-    setStyle({
-      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      transition: 'transform 0.4s ease-out',
-    });
-    setGlareStyle({ opacity: 0, transition: 'opacity 0.4s ease' });
+    if (!innerRef.current || !glareRef.current) return;
+    innerRef.current.style.setProperty('--rotateX', '0deg');
+    innerRef.current.style.setProperty('--rotateY', '0deg');
+    innerRef.current.style.setProperty('--scale', '1');
+    glareRef.current.style.setProperty('--glareOpacity', '0');
   }, []);
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -195,13 +184,21 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
         ref={cardRef}
       >
         <div 
-          className="relative bg-[#0a0a0a] border border-zinc-900 overflow-hidden flex flex-col h-full hover:border-emerald-500/50 transition-colors duration-300 will-change-transform"
-          style={style}
+          ref={innerRef}
+          className="relative bg-[#0a0a0a] border border-zinc-900 overflow-hidden flex flex-col h-full hover:border-emerald-500/50 transition-[border-color,transform] duration-300 will-change-transform"
+          style={{ 
+            transform: 'perspective(1000px) rotateX(var(--rotateX, 0deg)) rotateY(var(--rotateY, 0deg)) scale3d(var(--scale, 1), var(--scale, 1), var(--scale, 1))' 
+          }}
         >
           {/* Dynamic Glare Overlay */}
           <div 
-            className="absolute inset-0 pointer-events-none z-20"
-            style={{ ...glareStyle, willChange: 'opacity, background' }}
+            ref={glareRef}
+            className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-300"
+            style={{ 
+              opacity: 'var(--glareOpacity, 0)',
+              background: 'radial-gradient(circle at var(--glareX, 50%) var(--glareY, 50%), rgba(16, 185, 129, 0.3) 0%, transparent 70%)',
+              willChange: 'opacity, background' 
+            }}
           />
           
           {/* Preview Area */}
