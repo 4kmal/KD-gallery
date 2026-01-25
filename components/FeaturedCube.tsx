@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSound } from './SoundManager';
 import { MOCK_USERS } from '../constants';
+import { LoadingAnimation } from '../types';
 import CodeEditorModal from './CodeEditorModal';
+import FullscreenViewer from './FullscreenViewer';
 
 const FeaturedCube: React.FC = () => {
   const [faceTexts, setFaceTexts] = useState(['', '', '', '', '', '']);
   const [copied, setCopied] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const streamingIntervals = useRef<number[]>([]);
   const { playSound } = useSound();
   const author = MOCK_USERS.fourkmal;
@@ -77,6 +80,62 @@ init() {
     setIsEditorOpen(true);
   };
 
+  const handleFullscreen = () => {
+    playSound('click');
+    setIsFullscreenOpen(true);
+  };
+
+  // Create a mock LoadingAnimation for the FullscreenViewer
+  const cubeAnimation: LoadingAnimation = {
+    id: 'neural-cube',
+    name: 'NEURAL_CUBE',
+    description: 'A 3D rotating cube with streaming code on each face.',
+    category: 'Shape Shift',
+    html: `<style>
+      @keyframes rotateCube {
+        from { transform: rotateX(-20deg) rotateY(30deg); }
+        to { transform: rotateX(-20deg) rotateY(390deg); }
+      }
+      .neural-cube {
+        width: 180px;
+        height: 180px;
+        position: relative;
+        transform-style: preserve-3d;
+        animation: rotateCube 15s infinite linear;
+      }
+      .cube-face {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-family: monospace;
+        border: 1px solid;
+        box-sizing: border-box;
+      }
+      .face-front { transform: translateZ(90px); color: #0ff; background: rgba(0,255,255,0.05); border-color: rgba(0,255,255,0.3); }
+      .face-back { transform: rotateY(180deg) translateZ(90px); color: #0f0; background: rgba(0,255,0,0.05); border-color: rgba(0,255,0,0.3); }
+      .face-right { transform: rotateY(90deg) translateZ(90px); color: #f0f; background: rgba(255,0,255,0.05); border-color: rgba(255,0,255,0.3); }
+      .face-left { transform: rotateY(-90deg) translateZ(90px); color: #f80; background: rgba(255,136,0,0.05); border-color: rgba(255,136,0,0.3); }
+      .face-top { transform: rotateX(90deg) translateZ(90px); color: #ff0; background: rgba(255,255,0,0.05); border-color: rgba(255,255,0,0.3); }
+      .face-bottom { transform: rotateX(-90deg) translateZ(90px); color: #88f; background: rgba(136,136,255,0.05); border-color: rgba(136,136,255,0.3); }
+    </style>
+    <div style="perspective: 1000px;">
+      <div class="neural-cube">
+        <div class="cube-face face-front">&lt;html&gt;</div>
+        <div class="cube-face face-back">&lt;/html&gt;</div>
+        <div class="cube-face face-right">.css</div>
+        <div class="cube-face face-left">.tsx</div>
+        <div class="cube-face face-top">&lt;head&gt;</div>
+        <div class="cube-face face-bottom">&lt;body&gt;</div>
+      </div>
+    </div>`,
+    tailwindClasses: 'Neural cube animation',
+    author: author,
+  };
+
   useEffect(() => {
     streamingIntervals.current.forEach(clearInterval);
     streamingIntervals.current = [];
@@ -142,6 +201,16 @@ init() {
         </div>
 
         <div className="relative flex-grow flex items-center justify-center">
+          {/* Fullscreen Button */}
+          <button
+            onClick={handleFullscreen}
+            onMouseDown={() => playSound('click')}
+            className="absolute top-0 right-0 w-8 h-8 bg-black/60 hover:bg-emerald-600 text-zinc-400 hover:text-black flex items-center justify-center transition-all z-20 border border-zinc-800 hover:border-emerald-500 opacity-0 group-hover:opacity-100"
+            title="View Fullscreen"
+          >
+            <i className="fas fa-expand text-sm"></i>
+          </button>
+
           <div style={{
             width: '180px',
             height: '180px',
@@ -235,6 +304,12 @@ init() {
         isOpen={isEditorOpen} 
         onClose={() => setIsEditorOpen(false)} 
         files={generateCodeFiles()} 
+      />
+
+      <FullscreenViewer
+        isOpen={isFullscreenOpen}
+        onClose={() => setIsFullscreenOpen(false)}
+        animation={cubeAnimation}
       />
     </>
   );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useId, memo } from 're
 import { LoadingAnimation } from '../types';
 import { useSound } from './SoundManager';
 import CodeEditorModal from './CodeEditorModal';
+import FullscreenViewer from './FullscreenViewer';
 
 interface AnimationCardProps {
   animation: LoadingAnimation;
@@ -23,6 +24,7 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
   const { playSound } = useSound();
   const [copied, setCopied] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const glareRef = useRef<HTMLDivElement>(null);
@@ -146,6 +148,13 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
     setIsEditorOpen(true);
   };
 
+  const handleFullscreen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    playSound('click');
+    setIsFullscreenOpen(true);
+  };
+
   return (
     <>
       <div 
@@ -192,6 +201,16 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
           <div className="absolute top-4 left-4 px-2 py-1 bg-emerald-950/40 text-xs font-black text-emerald-500 uppercase tracking-widest border border-emerald-900/50 z-10">
             {animation.category}
           </div>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={handleFullscreen}
+            onMouseDown={() => playSound('click')}
+            className="absolute top-4 right-4 w-8 h-8 bg-black/60 hover:bg-emerald-600 text-zinc-400 hover:text-black flex items-center justify-center transition-all z-20 border border-zinc-800 hover:border-emerald-500 opacity-0 group-hover:opacity-100"
+            title="View Fullscreen"
+          >
+            <i className="fas fa-expand text-sm"></i>
+          </button>
         </div>
 
         {/* Info Area */}
@@ -263,6 +282,12 @@ const AnimationCard: React.FC<AnimationCardProps> = ({ animation }) => {
       isOpen={isEditorOpen} 
       onClose={() => setIsEditorOpen(false)} 
       files={[{ name: `${animation.id}.html`, content: animation.html }]} 
+    />
+
+    <FullscreenViewer
+      isOpen={isFullscreenOpen}
+      onClose={() => setIsFullscreenOpen(false)}
+      animation={animation}
     />
   </>
   );

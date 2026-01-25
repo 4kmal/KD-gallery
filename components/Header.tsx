@@ -1,7 +1,13 @@
 import React from 'react';
 import { useSound } from './SoundManager';
+import { PageType } from '../types';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  currentPage?: PageType;
+  onNavigate?: (page: PageType) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ currentPage = 'gallery', onNavigate }) => {
   const { playSound } = useSound();
 
   const handleScrollToGallery = (e: React.MouseEvent) => {
@@ -20,6 +26,9 @@ const Header: React.FC = () => {
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => {
             playSound('click');
+            if (onNavigate) {
+              onNavigate('gallery');
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onMouseEnter={() => playSound('hover')}
@@ -38,9 +47,30 @@ const Header: React.FC = () => {
           <button 
             onClick={handleScrollToGallery}
             onMouseEnter={() => playSound('hover')}
-            className="px-6 py-1.5 bg-white text-black text-xl hover:bg-emerald-500 hover:text-white transition-colors uppercase tracking-tight shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none"
+            className={`px-6 py-1.5 text-xl transition-colors uppercase tracking-tight shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none ${
+              currentPage === 'gallery' 
+                ? 'bg-emerald-500 text-black' 
+                : 'bg-white text-black hover:bg-emerald-500 hover:text-white'
+            }`}
           >
             Explore Assets
+          </button>
+          <button 
+            onClick={() => {
+              playSound('click');
+              if (onNavigate) {
+                onNavigate('bounties');
+              }
+            }}
+            onMouseEnter={() => playSound('hover')}
+            className={`px-6 py-1.5 text-xl transition-colors uppercase tracking-tight shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none ${
+              currentPage === 'bounties' 
+                ? 'bg-amber-500 text-black' 
+                : 'bg-zinc-900 text-amber-500 border border-amber-500/50 hover:bg-amber-500 hover:text-black'
+            }`}
+          >
+            <i className="fas fa-trophy mr-2"></i>
+            Bounties
           </button>
           <button 
             onMouseEnter={() => playSound('hover')}

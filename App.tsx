@@ -3,9 +3,11 @@ import Header from './components/Header';
 import AnimationCard from './components/AnimationCard';
 import FeaturedCube from './components/FeaturedCube';
 import LegacyFeaturedLoaders from './components/LegacyFeaturedLoaders';
+import FeaturedTesseractLoader from './components/FeaturedTesseractLoader';
+import BountiesPage from './components/BountiesPage';
 import { INITIAL_ANIMATIONS } from './constants';
 import { SoundProvider, useSound } from './components/SoundManager';
-import { LoadingAnimation } from './types';
+import { LoadingAnimation, PageType } from './types';
 
 // Category display order and styling
 const CATEGORY_CONFIG: Record<string, { icon: string; color: string }> = {
@@ -50,6 +52,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({ category, animations 
 const Main: React.FC = () => {
   const [animations] = useState<LoadingAnimation[]>(INITIAL_ANIMATIONS);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState<PageType>('gallery');
   const { playSound } = useSound();
 
   const filteredAnimations = animations.filter(a => 
@@ -84,9 +87,19 @@ const Main: React.FC = () => {
     return Object.entries(groups).filter(([_, items]) => items.length > 0);
   }, [filteredAnimations, isAllSelected]);
 
+  // If on bounties page, render it
+  if (currentPage === 'bounties') {
+    return (
+      <div className="min-h-screen bg-black text-white selection:bg-emerald-500 selection:text-black">
+        <Header currentPage={currentPage} onNavigate={setCurrentPage} />
+        <BountiesPage onNavigateHome={() => setCurrentPage('gallery')} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-emerald-500 selection:text-black">
-      <Header />
+      <Header currentPage={currentPage} onNavigate={setCurrentPage} />
 
       <main className="container mx-auto px-6 py-16">
         {/* Hero Section */}
@@ -111,9 +124,10 @@ const Main: React.FC = () => {
               <div className="h-[2px] bg-zinc-900 flex-grow"></div>
            </div>
            
-           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-stretch">
               <FeaturedCube />
               <LegacyFeaturedLoaders />
+              <FeaturedTesseractLoader />
            </div>
         </section>
 
