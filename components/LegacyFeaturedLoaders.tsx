@@ -154,24 +154,20 @@ const LegacyFeaturedLoaders: React.FC = () => {
   </div>
 </div>`;
 
-  const squaresCode = `<!-- SPINNING SQUARES -->
-<div class="spinner-box">
-  <div class="configure-border-1">  
-    <div class="configure-core"></div>
-  </div>  
-  <div class="configure-border-2">
-    <div class="configure-core"></div>
-  </div> 
+  const sphereScanCode = `<!-- 3D SPHERE SCAN -->
+<div class="sphere-wrapper">
+  <div class="sphere-scan">
+    <div class="plane plane-1"></div>
+    <div class="plane plane-2"></div>
+    <div class="plane plane-3"></div>
+    <div class="plane plane-4"></div>
+    <div class="plane plane-5"></div>
+    <div class="plane plane-6"></div>
+  </div>
 </div>`;
 
   const styles = `
     @keyframes spin { from { transform: rotate(0); } to { transform: rotate(359deg); } }
-    @keyframes configure-clockwise { 
-      0% { transform: rotate(0); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg); } 100% { transform: rotate(360deg); } 
-    }
-    @keyframes configure-xclockwise { 
-      0% { transform: rotate(45deg); } 25% { transform: rotate(-45deg); } 50% { transform: rotate(-135deg); } 75% { transform: rotate(-225deg); } 100% { transform: rotate(-315deg); } 
-    }
     .solar-system { width: 250px; height: 250px; display: flex; justify-content: center; align-items: center; }
     .orbit { position: relative; display: flex; justify-content: center; align-items: center; border: 1px solid #10b98155; border-radius: 50%; } 
     .earth-orbit { width: 165px; height: 165px; animation: spin 12s linear 0s infinite; }
@@ -179,9 +175,21 @@ const LegacyFeaturedLoaders: React.FC = () => {
     .mercury-orbit { width: 90px; height: 90px; animation: spin 3s linear 0s infinite; }
     .planet { position: absolute; top: -5px; width: 10px; height: 10px; border-radius: 50%; background-color: #3ff9dc; }
     .sun { width: 35px; height: 35px; border-radius: 50%; background-color: #ffab91; }
-    .configure-border-1 { width: 115px; height: 115px; padding: 3px; position: absolute; display: flex; justify-content: center; align-items: center; background: #fb5b53; animation: configure-clockwise 3s ease-in-out 0s infinite alternate; }
-    .configure-border-2 { width: 115px; height: 115px; padding: 3px; left: -115px; display: flex; justify-content: center; align-items: center; background: #3ff9dc; transform: rotate(45deg); animation: configure-xclockwise 3s ease-in-out 0s infinite alternate; }
-    .configure-core { width: 100%; height: 100%; background-color: #050505; }
+
+    /* 3D Sphere Scan Styles */
+    .sphere-wrapper { display: flex; justify-content: center; align-items: center; perspective: 1000px; }
+    .sphere-scan { position: relative; width: 120px; height: 120px; transform-style: preserve-3d; animation: sphere-spin 12s linear infinite; }
+    .plane { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; border: 1px solid #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
+    .plane-1 { transform: rotateY(0deg); }
+    .plane-2 { transform: rotateY(30deg); }
+    .plane-3 { transform: rotateY(60deg); }
+    .plane-4 { transform: rotateY(90deg); }
+    .plane-5 { transform: rotateY(120deg); }
+    .plane-6 { transform: rotateY(150deg); }
+    @keyframes sphere-spin {
+      0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
+      100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+    }
   `;
 
   // Fullscreen HTML with embedded styles
@@ -208,21 +216,31 @@ const LegacyFeaturedLoaders: React.FC = () => {
     </div>
   </div>`;
 
-  const squaresFullscreenHtml = `<style>
-    @keyframes configure-clockwise { 
-      0% { transform: rotate(0); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg); } 100% { transform: rotate(360deg); } 
+  const sphereScanFullscreenHtml = `<style>
+    body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    .sphere-wrapper { display: flex; justify-content: center; align-items: center; perspective: 1000px; }
+    .sphere-scan { position: relative; width: 200px; height: 200px; transform-style: preserve-3d; animation: sphere-spin 12s linear infinite; }
+    .plane { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; border: 2px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+    .plane-1 { transform: rotateY(0deg); }
+    .plane-2 { transform: rotateY(30deg); }
+    .plane-3 { transform: rotateY(60deg); }
+    .plane-4 { transform: rotateY(90deg); }
+    .plane-5 { transform: rotateY(120deg); }
+    .plane-6 { transform: rotateY(150deg); }
+    @keyframes sphere-spin {
+      0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
+      100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
     }
-    @keyframes configure-xclockwise { 
-      0% { transform: rotate(45deg); } 25% { transform: rotate(-45deg); } 50% { transform: rotate(-135deg); } 75% { transform: rotate(-225deg); } 100% { transform: rotate(-315deg); } 
-    }
-    .spinner-box { position: relative; width: 230px; height: 115px; display: flex; justify-content: center; align-items: center; }
-    .configure-border-1 { width: 115px; height: 115px; padding: 3px; position: absolute; display: flex; justify-content: center; align-items: center; background: #fb5b53; animation: configure-clockwise 3s ease-in-out 0s infinite alternate; }
-    .configure-border-2 { width: 115px; height: 115px; padding: 3px; position: absolute; left: 115px; display: flex; justify-content: center; align-items: center; background: #3ff9dc; transform: rotate(45deg); animation: configure-xclockwise 3s ease-in-out 0s infinite alternate; }
-    .configure-core { width: 100%; height: 100%; background-color: #050505; }
   </style>
-  <div class="spinner-box">
-    <div class="configure-border-1"><div class="configure-core"></div></div>  
-    <div class="configure-border-2"><div class="configure-core"></div></div> 
+  <div class="sphere-wrapper">
+    <div class="sphere-scan">
+      <div class="plane plane-1"></div>
+      <div class="plane plane-2"></div>
+      <div class="plane plane-3"></div>
+      <div class="plane plane-4"></div>
+      <div class="plane plane-5"></div>
+      <div class="plane plane-6"></div>
+    </div>
   </div>`;
 
   return (
@@ -243,9 +261,17 @@ const LegacyFeaturedLoaders: React.FC = () => {
         </div>
       </LoaderCard>
 
-      <LoaderCard title="SQUARE_LOADER" techStack="HTML / CSS" author={MOCK_USERS.kiyoraka} code={squaresCode} fullscreenHtml={squaresFullscreenHtml}>
-        <div className="configure-border-1"><div className="configure-core"></div></div>  
-        <div className="configure-border-2"><div className="configure-core"></div></div> 
+      <LoaderCard title="3D_SPHERE_SCAN" techStack="HTML / CSS" author={MOCK_USERS.fourkmal} code={sphereScanCode} fullscreenHtml={sphereScanFullscreenHtml}>
+        <div className="sphere-wrapper">
+          <div className="sphere-scan">
+            <div className="plane plane-1"></div>
+            <div className="plane plane-2"></div>
+            <div className="plane plane-3"></div>
+            <div className="plane plane-4"></div>
+            <div className="plane plane-5"></div>
+            <div className="plane plane-6"></div>
+          </div>
+        </div>
       </LoaderCard>
     </>
   );
