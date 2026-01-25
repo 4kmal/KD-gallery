@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSound } from './SoundManager';
 import { MOCK_USERS } from '../constants';
 import { LoadingAnimation } from '../types';
@@ -86,55 +86,159 @@ init() {
   };
 
   // Create a mock LoadingAnimation for the FullscreenViewer
-  const cubeAnimation: LoadingAnimation = {
-    id: 'neural-cube',
-    name: 'NEURAL_CUBE',
-    description: 'A 3D rotating cube with streaming code on each face.',
-    category: 'Shape Shift',
-    html: `<style>
-      @keyframes rotateCube {
-        from { transform: rotateX(-20deg) rotateY(30deg); }
-        to { transform: rotateX(-20deg) rotateY(390deg); }
-      }
-      .neural-cube {
-        width: 180px;
-        height: 180px;
-        position: relative;
-        transform-style: preserve-3d;
-        animation: rotateCube 15s infinite linear;
-      }
-      .cube-face {
-        position: absolute;
-        width: 180px;
-        height: 180px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-family: monospace;
-        border: 1px solid;
-        box-sizing: border-box;
-      }
-      .face-front { transform: translateZ(90px); color: #0ff; background: rgba(0,255,255,0.05); border-color: rgba(0,255,255,0.3); }
-      .face-back { transform: rotateY(180deg) translateZ(90px); color: #0f0; background: rgba(0,255,0,0.05); border-color: rgba(0,255,0,0.3); }
-      .face-right { transform: rotateY(90deg) translateZ(90px); color: #f0f; background: rgba(255,0,255,0.05); border-color: rgba(255,0,255,0.3); }
-      .face-left { transform: rotateY(-90deg) translateZ(90px); color: #f80; background: rgba(255,136,0,0.05); border-color: rgba(255,136,0,0.3); }
-      .face-top { transform: rotateX(90deg) translateZ(90px); color: #ff0; background: rgba(255,255,0,0.05); border-color: rgba(255,255,0,0.3); }
-      .face-bottom { transform: rotateX(-90deg) translateZ(90px); color: #88f; background: rgba(136,136,255,0.05); border-color: rgba(136,136,255,0.3); }
-    </style>
-    <div style="perspective: 1000px;">
-      <div class="neural-cube">
-        <div class="cube-face face-front">&lt;html&gt;</div>
-        <div class="cube-face face-back">&lt;/html&gt;</div>
-        <div class="cube-face face-right">.css</div>
-        <div class="cube-face face-left">.tsx</div>
-        <div class="cube-face face-top">&lt;head&gt;</div>
-        <div class="cube-face face-bottom">&lt;body&gt;</div>
+  const cubeAnimation: LoadingAnimation = useMemo(() => {
+    const files = generateCodeFiles();
+    const fileContents = [
+      files[0].content,
+      files[1].content,
+      files[2].content,
+      files[0].content,
+      files[1].content,
+      files[2].content
+    ];
+
+    return {
+      id: 'neural-cube',
+      name: 'NEURAL_CUBE',
+      description: 'A 3D rotating cube with streaming code on each face.',
+      category: 'Shape Shift',
+      html: `<style>
+        :root {
+          --nc-size: 180px;
+          --nc-split: 90px;
+          --nc-font-base: 10px;
+          --nc-font-label: 7px;
+          --nc-font-content: 8px;
+        }
+        @keyframes rotateCube {
+          from { transform: rotateX(-20deg) rotateY(30deg); }
+          to { transform: rotateX(-20deg) rotateY(390deg); }
+        }
+        .neural-cube {
+          width: var(--nc-size);
+          height: var(--nc-size);
+          position: relative;
+          transform-style: preserve-3d;
+          animation: rotateCube 15s infinite linear;
+        }
+        .cube-face {
+          position: absolute;
+          width: var(--nc-size);
+          height: var(--nc-size);
+          display: flex;
+          flex-direction: column;
+          font-size: var(--nc-font-base);
+          font-family: monospace;
+          border: 1px solid;
+          box-sizing: border-box;
+          box-shadow: 0 0 10px rgba(0,255,255,0.1);
+          backface-visibility: visible;
+          padding: 8px;
+          overflow: hidden;
+        }
+        .face-label {
+          font-size: var(--nc-font-label);
+          font-weight: bold;
+          margin-bottom: 4px;
+          opacity: 0.8;
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+          padding-bottom: 2px;
+          flex-shrink: 0;
+        }
+        .face-content {
+          flex: 1;
+          overflow: hidden;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          margin: 0;
+          font-size: var(--nc-font-content);
+          line-height: 1.1;
+          word-break: break-all;
+        }
+        .face-front { transform: translateZ(var(--nc-split)); color: #0ff; background: rgba(0,255,255,0.05); border-color: rgba(0,255,255,0.3); }
+        .face-back { transform: rotateY(180deg) translateZ(var(--nc-split)); color: #0f0; background: rgba(0,255,0,0.05); border-color: rgba(0,255,0,0.3); }
+        .face-right { transform: rotateY(90deg) translateZ(var(--nc-split)); color: #f0f; background: rgba(255,0,255,0.05); border-color: rgba(255,0,255,0.3); }
+        .face-left { transform: rotateY(-90deg) translateZ(var(--nc-split)); color: #f80; background: rgba(255,136,0,0.05); border-color: rgba(255,136,0,0.3); }
+        .face-top { transform: rotateX(90deg) translateZ(var(--nc-split)); color: #ff0; background: rgba(255,255,0,0.05); border-color: rgba(255,255,0,0.3); }
+        .face-bottom { transform: rotateX(-90deg) translateZ(var(--nc-split)); color: #88f; background: rgba(136,136,255,0.05); border-color: rgba(136,136,255,0.3); }
+      </style>
+      <div style="perspective: 1000px;">
+        <div class="neural-cube">
+          <div class="cube-face face-front">
+            <div class="face-label">&lt;html&gt;</div>
+            <div class="face-content"></div>
+          </div>
+          <div class="cube-face face-back">
+            <div class="face-label">&lt;/html&gt;</div>
+            <div class="face-content"></div>
+          </div>
+          <div class="cube-face face-right">
+            <div class="face-label">.css</div>
+            <div class="face-content"></div>
+          </div>
+          <div class="cube-face face-left">
+            <div class="face-label">.tsx</div>
+            <div class="face-content"></div>
+          </div>
+          <div class="cube-face face-top">
+            <div class="face-label">&lt;head&gt;</div>
+            <div class="face-content"></div>
+          </div>
+          <div class="cube-face face-bottom">
+            <div class="face-label">&lt;body&gt;</div>
+            <div class="face-content"></div>
+          </div>
+        </div>
       </div>
-    </div>`,
-    tailwindClasses: 'Neural cube animation',
-    author: author,
-  };
+      <script>
+        (function() {
+          if (typeof root === 'undefined' || !root) return;
+          
+          const faces = [
+            root.querySelector('.face-front .face-content'),
+            root.querySelector('.face-back .face-content'),
+            root.querySelector('.face-right .face-content'),
+            root.querySelector('.face-left .face-content'),
+            root.querySelector('.face-top .face-content'),
+            root.querySelector('.face-bottom .face-content')
+          ];
+          
+          const contents = ${JSON.stringify(fileContents)};
+          const maxChars = 140;
+          
+          contents.forEach((content, i) => {
+            const face = faces[i];
+            if (!face) return;
+            
+            let charIndex = 0;
+            let currentText = '';
+            
+            if (typeof registerInterval === 'function') {
+              registerInterval(() => {
+                if (charIndex < content.length) {
+                  currentText = (currentText + content[charIndex]).slice(-maxChars);
+                  face.textContent = currentText;
+                  charIndex++;
+                } else {
+                  charIndex = 0;
+                  currentText = '';
+                  face.textContent = '';
+                }
+              }, 30);
+            }
+          });
+        })();
+      </script>`,
+      tailwindClasses: 'Neural cube animation',
+      author: author,
+    };
+  }, [author]);
+
+  const isFullscreenOpenRef = useRef(isFullscreenOpen);
+
+  useEffect(() => {
+    isFullscreenOpenRef.current = isFullscreenOpen;
+  }, [isFullscreenOpen]);
 
   useEffect(() => {
     streamingIntervals.current.forEach(clearInterval);
@@ -145,6 +249,9 @@ init() {
     [codeFiles[0].content, codeFiles[1].content, codeFiles[2].content, codeFiles[0].content, codeFiles[1].content, codeFiles[2].content].forEach((content, faceIndex) => {
       let charIndex = 0;
       const interval = setInterval(() => {
+        // Pause animation when fullscreen is open to improve performance
+        if (isFullscreenOpenRef.current) return;
+
         if (charIndex < content.length) {
           setFaceTexts(prev => {
             const newTexts = [...prev];

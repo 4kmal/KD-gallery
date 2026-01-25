@@ -116,6 +116,48 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({ isOpen, onClose, an
     };
   }, [isOpen, animation.id, uniqueId]);
 
+  // Generic script execution for non-Westworld animations
+  useEffect(() => {
+    if (!isOpen || animation.category === 'Westworld' || !previewRef.current) return;
+
+    const scriptMatch = animation.html.match(/<script>([\s\S]*?)<\/script>/);
+    if (!scriptMatch || !scriptMatch[1]) return;
+
+    const uniqueNamespace = `__anim_${uniqueId}`;
+    const scriptCode = scriptMatch[1];
+
+    // Helper to allow scripts to register intervals that get cleaned up
+    const wrappedScript = `
+      const root = document.getElementById('${uniqueId}');
+      const registerInterval = (fn, delay) => {
+        const id = window.setInterval(fn, delay);
+        window['${uniqueNamespace}_intervals'] = window['${uniqueNamespace}_intervals'] || [];
+        window['${uniqueNamespace}_intervals'].push(id);
+        return id;
+      };
+      
+      try {
+        ${scriptCode}
+      } catch (e) {
+        console.error('Error in animation script:', e);
+      }
+    `;
+
+    try {
+      new Function(wrappedScript)();
+    } catch (e) {
+      console.error('Failed to execute animation script:', e);
+    }
+
+    return () => {
+      const intervals = (window as any)[`${uniqueNamespace}_intervals`];
+      if (intervals && Array.isArray(intervals)) {
+        intervals.forEach(window.clearInterval);
+      }
+      delete (window as any)[`${uniqueNamespace}_intervals`];
+    };
+  }, [isOpen, animation, uniqueId]);
+
   // Update canvas animation controls
   useEffect(() => {
     if (animation.category === 'Westworld') {
@@ -190,6 +232,23 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({ isOpen, onClose, an
     
     // For CSS animations, wrap with speed control
     let html = animation.html;
+    
+    // High-res overrides for Neural Cube
+    if (animation.name === 'NEURAL_CUBE') {
+      html = `
+        <style>
+          :root {
+            --nc-size: 450px !important;
+            --nc-split: 225px !important;
+            --nc-font-base: 25px !important;
+            --nc-font-label: 17.5px !important;
+            --nc-font-content: 20px !important;
+          }
+        </style>
+        ${html}
+      `;
+    }
+
     if (!filters.isPaused && filters.speed !== 1) {
       // Add inline style to modify animation speed
       html = `<div style="--speed-multiplier: ${1/filters.speed};">${html}</div>`;
@@ -205,7 +264,7 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({ isOpen, onClose, an
     >
       {/* Mac Window Container */}
       <div 
-        className="w-full max-w-6xl h-[90vh] max-h-[800px] bg-[#1c1c1e] rounded-xl overflow-hidden shadow-2xl flex flex-col"
+        className="w-full max-w-6xl h-[95vh] max-h-[900px] bg-[#1c1c1e] rounded-xl overflow-hidden shadow-2xl flex flex-col"
         style={{ 
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.1)' 
         }}
@@ -258,20 +317,27 @@ const FullscreenViewer: React.FC<FullscreenViewerProps> = ({ isOpen, onClose, an
             
             {/* Animation Container */}
             <div 
-              className="relative z-10 transform scale-[2] md:scale-[2.5]"
+              className="relative z-10"
               style={{ 
                 filter: getFilterString(),
-                ...(animation.category !== 'Westworld' ? getSpeedStyle() : {})
               }}
             >
               <div 
-                ref={previewRef}
-                className={filters.isPaused && animation.category !== 'Westworld' ? '[&_*]:!animation-play-state-paused' : ''}
-                style={animation.category !== 'Westworld' && filters.speed !== 1 ? {
-                  ['--animation-speed' as any]: filters.speed,
-                } : {}}
-                dangerouslySetInnerHTML={{ __html: getModifiedHtml() }}
-              />
+                className={animation.name === 'NEURAL_CUBE' ? '' : 'transform scale-[2] md:scale-[2.5]'}
+                style={{ 
+                  ...(animation.category !== 'Westworld' ? getSpeedStyle() : {})
+                }}
+              >
+                <div 
+                  ref={previewRef}
+                  id={uniqueId}
+                  className={filters.isPaused && animation.category !== 'Westworld' ? '[&_*]:!animation-play-state-paused' : ''}
+                  style={animation.category !== 'Westworld' && filters.speed !== 1 ? {
+                    ['--animation-speed' as any]: filters.speed,
+                  } : {}}
+                  dangerouslySetInnerHTML={{ __html: getModifiedHtml() }}
+                />
+              </div>
             </div>
 
             {/* Color Overlay */}
@@ -609,5 +675,5 @@ const FilterSlider: React.FC<FilterSliderProps> = ({
   );
 };
 
-export default FullscreenViewer;
+export default React.memo(FullscreenViewer);
 
